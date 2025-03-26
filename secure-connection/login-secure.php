@@ -18,35 +18,44 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $user = $_POST['username'];
     $pass = $_POST['password'];
     
-    // VULNERABLE QUERY (Allows SQL Injection)
-    $sql = "SELECT * FROM users WHERE username = '$user' AND password = '$pass'";
-    $result = $conn->query($sql);
+    // Prevents SQL injection
+    $stmt = $conn->prepare("SELECT password FROM users WHERE username = ?");
+    
+
+    $stmt->bind_param("s", $user);
+    $stmt->execute();
+    $result = $stmt->get_result();
     
     if ($result->num_rows > 0) {
-        $_SESSION['user'] = $user;
-        echo "Login successful!";
+        $row = $result->fetch_assoc();
+
+        // Password hashing
+        if (password_verify($pass, $row['password'])) {
+            $_SESSION['user'] = $user;
+            echo "Login successful!";
+        } else {
+            echo "Invalid credentials!";
+        }
     } else {
         echo "Invalid credentials!";
     }
+    
+    $stmt->close();
 }
-
-//This login system is susceptible to SQL injection due to the direct embedding of user inputs into the SQL query.
-//Make this a secure login
-
-
+$conn->close();
 ?>
 
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Vulnerable Login</title>
+    <title>Secure Login</title>
 </head>
 <body>
     <form method="POST" action="">
         <label>Username:</label>
-        <input type="text" name="username"><br>
+        <input type="text" name="username" required><br>
         <label>Password:</label>
-        <input type="password" name="password"><br>
+        <input type="password" name="password" required><br>
         <button type="submit">Login</button>
     </form>
 </body>
