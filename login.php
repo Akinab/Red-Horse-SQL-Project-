@@ -35,9 +35,14 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     // "SELECT * FROM users WHERE username = '$user' AND password = '$pass' UNION SELECT username, password FROM users -- ";
 
     // --- ⏱️ Time-based SQL Injection ---
-    $sql_time = "SELECT * FROM users WHERE username = '$user' AND password = '$pass'";
-    "SELECT * FROM users WHERE username = '$user' AND password = '$pass' 
+    $sql_time =  "SELECT * FROM users WHERE username = '$user' AND password = '$pass' 
                  OR IF(1=1, SLEEP(5), 0) -- ";
+
+    //  By injecting this SQL code to the query ' OR IF(1=1, SLEEP(5), 0) --
+    // The system would load for 5 seconds if there is a credential in the database that would result in a true statement
+    // We transform the code to  "SELECT * FROM users WHERE username = '$user' AND password = '$pass' OR IF(1=1, SLEEP(5), 0) -- ";
+
+
 
     // Toggle between SQL injection types
     $sql = $use_union ? $sql_union : $sql_time;
