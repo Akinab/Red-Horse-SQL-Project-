@@ -14,54 +14,31 @@ if ($conn->connect_error) {
     die("Connection failed: " . $conn->connect_error);
 }
 
-$remarks = "";               // Store general remarks
-$execution_time = 0;         // Store execution time
-$union_results = "";         // Store UNION results
+$remarks = "";  // Store remarks to display below the form
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $user = $_POST['username'];
     $pass = $_POST['password'];
     
-    // Check which SQLi type is selected
-    $use_union = ($_POST['use_union'] == "1");
+    // Intentionally vulnerable query with time-based SQL injection simulation
+    $sql = "SELECT * FROM users WHERE username = '$user' AND password = '$pass' OR IF(1=1, SLEEP(5), 0) -- ";
 
-    // --- 🚨 UNION-based SQL Injection ---
-    $sql_union = "SELECT * FROM users WHERE username = '$user' AND password = '$pass' 
-                  UNION SELECT username, password FROM users -- ";
-
-    // --- ⏱️ Time-based SQL Injection ---
-    $sql_time = "SELECT * FROM users WHERE username = '$user' AND password = '$pass' 
-                 OR IF(1=1, SLEEP(5), 0) -- ";
-
-    // Toggle between SQL injection types
-    $sql = $use_union ? $sql_union : $sql_time;
-
-    // Measure execution time for Time-based SQLi
+    // Measure execution time
     $start_time = microtime(true);
     $result = $conn->query($sql);
     $end_time = microtime(true);
 
     $execution_time = $end_time - $start_time;
 
-    // Display results based on the selected attack type
     if ($result && $result->num_rows > 0) {
         $_SESSION['user'] = $user;
         $remarks = "<div class='success'>✅ Login successful!</div>";
-
-        // Display UNION-based results only when UNION SQLi is selected
-        if ($use_union) {
-            while ($row = mysqli_fetch_assoc($result)) {
-                $union_results .= "<pre>" . print_r($row, true) . "</pre>";
-            }
-        }
     } else {
         $remarks = "<div class='error'>❌ Invalid credentials!</div>";
     }
 
-    // Display execution time only for Time-based SQLi
-    if (!$use_union) {
-        $remarks .= "<div class='info'>⏱️ Execution time: " . number_format($execution_time, 2) . " seconds</div>";
-    }
+    // Display execution time to show the delay
+    $remarks .= "<div class='info'>⏱️ Execution time: " . number_format($execution_time, 2) . " seconds</div>";
 }
 ?>
 
@@ -107,7 +84,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             text-align: left;
         }
 
-        input, select {
+        input {
             width: 100%;
             padding: 10px;
             margin-bottom: 15px;
@@ -159,15 +136,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             font-weight: bold;
         }
 
-        pre {
-            background: #f4f4f4;
-            padding: 10px;
-            border: 1px solid #ccc;
-            border-radius: 5px;
-            text-align: left;
-            overflow: auto;
-        }
-
         /* Responsive Design */
         @media (max-width: 480px) {
             .container, .remarks-container {
@@ -187,29 +155,15 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         
         <label>Password:</label>
         <input type="password" name="password" placeholder="Enter password" required>
-
-        <label>SQL Injection Type:</label>
-        <select name="use_union">
-            <option value="0">Time-Based SQLi</option>
-            <option value="1">Union-Based SQLi</option>
-        </select>
         
         <button type="submit">Login</button>
     </form>
 </div>
 
 <!-- Remarks Section Below the Form -->
-<?php if (!empty($remarks)): ?>
+<?php if ($remarks): ?>
     <div class="remarks-container">
         <?= $remarks ?>
-    </div>
-<?php endif; ?>
-
-<!-- Display UNION-based SQLi results only when selected -->
-<?php if (!empty($union_results)): ?>
-    <div class="remarks-container">
-        <h3>🛠️ UNION-based SQLi Results:</h3>
-        <?= $union_results ?>
     </div>
 <?php endif; ?>
 
